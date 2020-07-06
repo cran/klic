@@ -36,7 +36,8 @@
 #' @param verbose Boolean. Default is TRUE.
 #' @param annotations Data frame containing annotations for final plot.
 #' @param ccClMethods The i-th element of this vector goes into the
-#' \code{clMethod} argument of consensusCluster() for the i-th dataset.
+#' \code{clMethod} argument of consensusCluster() for the i-th dataset. If only
+#' one string is provided, then the same method is used for all datasets.
 #' @param ccDistHCs The i-th element of this vector goes into the \code{dist}
 #' argument of \code{consensusCluster()} for the i-th dataset.
 #' @param widestGap Boolean. If TRUE, compute also widest gap index to choose
@@ -124,16 +125,13 @@ klic = function(data,
             stop("All datasets must have the same number of rows.")
     }
     if (verbose)
-        print(paste("All datasets contain the same number of observations ",
-                    N, ".", sep = ""))
-    print(paste("We assume that the observations are the same in each dataset
-                and that they are in the same order."))
+        cat("All datasets contain the same number of observations ", N, ".\n")
+    cat("We assume that the observations are the same in each dataset and that they are in the same order.\n")
 
     # Check values of K
     if (individualMaxK == 2) {
         individualK = 2
-        warning("Since individualMaxK = 2, individualK is automatically set to
-                2.")
+        warning("Since individualMaxK = 2, individualK is automatically set to 2.")
     }
 
     if (globalMaxK == 2) {
@@ -143,6 +141,14 @@ klic = function(data,
 
     if(length(ccClMethods)==1){
         ccClMethods = rep(ccClMethods, M)
+    }
+
+    if("hclust" %in% ccClMethods){
+        if(length(ccDistHCs) == 1 & unique(ccClMethods) == "hclust"){
+            ccDistHCs = rep(ccDistHCs, M)
+        }else if(unique(ccClMethods) != "hclust" & length(ccDistHCs)!=M)  {
+            stop("Please specify a distance for each instance of hclust by passing a vector of length", M, "to ccDistHCs.")
+        }
     }
 
     # Initialise empty list for output
@@ -310,8 +316,13 @@ klic = function(data,
                 dataset_i = data[[i]]
             }
 
+            ccClMethod_i = ccClMethods[i]
+            ccDistHC_i = ccDistHCs[i]
+
             # Compute consensus matrix
-            CM[, , i] <- coca::consensusCluster(dataset_i, individualK[i], B)
+            CM[, , i] <- coca::consensusCluster(dataset_i, individualK[i], B,
+                                                clMethod = ccClMethod_i,
+                                                dist = ccDistHC_i)
 
             # Make consensus matrix positive definite
             CM[, , i] <- spectrumShift(CM[, , i])
